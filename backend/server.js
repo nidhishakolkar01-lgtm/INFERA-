@@ -22,6 +22,9 @@ import { runAutonomousAgent } from './actionGate/agentRunner.js';
 import { getLiveHostTelemetry } from './actionGate/liveHostMetrics.js';
 import { runChaosSimulationStream } from './actionGate/chaosSimulator.js';
 import { generateComplianceReport } from './actionGate/complianceReport.js';
+import { MerkleTree } from './actionGate/merkleTree.js';
+import { jitTokenEngine } from './actionGate/jitTokenEngine.js';
+import { adversarialLab } from './actionGate/adversarialLab.js';
 
 dotenv.config();
 
@@ -532,6 +535,116 @@ app.post('/api/ledger/reset', (req, res) => {
   approvalStore.reset();
   liveState.reset();
   res.json({ success: true, message: 'Ledger, approvals, and live system state reset.' });
+});
+
+// ==================== MERKLE TREE CRYPTOGRAPHIC AUDIT ROUTES ====================
+
+app.get('/api/merkle/tree', (req, res) => {
+  const chain = auditLedger.getChain();
+  const tree = new MerkleTree(chain);
+  res.json({
+    merkleRoot: tree.getRoot(),
+    totalLeaves: chain.length,
+    structure: tree.getTreeStructure(),
+  });
+});
+
+app.get('/api/merkle/proof/:leafIndex', (req, res) => {
+  const leafIndex = parseInt(req.params.leafIndex, 10);
+  const chain = auditLedger.getChain();
+  if (isNaN(leafIndex) || leafIndex < 0 || leafIndex >= chain.length) {
+    return res.status(400).json({ error: `Invalid leaf index. Valid range: 0 to ${chain.length - 1}` });
+  }
+  const tree = new MerkleTree(chain);
+  const proof = tree.getProof(leafIndex);
+  res.json({
+    ...proof,
+    targetBlock: chain[leafIndex],
+  });
+});
+
+app.post('/api/merkle/verify', (req, res) => {
+  const { leafHash, proof, merkleRoot } = req.body;
+  if (!leafHash || !proof || !merkleRoot) {
+    return res.status(400).json({ error: 'Missing required parameters: leafHash, proof, merkleRoot' });
+  }
+  const isValid = MerkleTree.verifyProof(leafHash, proof, merkleRoot);
+  res.json({
+    verified: isValid,
+    status: isValid ? 'CRYPTOGRAPHICALLY_VERIFIED' : 'PROOF_INVALID_OR_TAMPERED',
+    leafHash,
+    merkleRoot,
+    verifiedAt: new Date().toISOString(),
+  });
+});
+
+// ==================== JIT EPHEMERAL ACTION LEASE ROUTES ====================
+
+app.get('/api/jit/metrics', (req, res) => {
+  res.json(jitTokenEngine.getMetrics());
+});
+
+app.get('/api/jit/logs', (req, res) => {
+  res.json({ logs: jitTokenEngine.getSecurityLog() });
+});
+
+app.post('/api/jit/issue', (req, res) => {
+  const { actionId, agentId, toolName, parameters, authorizedBy, ttlMs } = req.body;
+  const token = jitTokenEngine.issueToken({
+    actionId: actionId || `act_${Date.now()}`,
+    agentId: agentId || 'agent-unknown',
+    toolName: toolName || 'unknown_tool',
+    parameters: parameters || {},
+    authorizedBy: authorizedBy || 'ACTIONGATE_ENGINE',
+    ttlMs: ttlMs ? parseInt(ttlMs, 10) : null,
+  });
+  res.json(token);
+});
+
+app.post('/api/jit/execute', (req, res) => {
+  const { token, toolName, parameters } = req.body;
+  const result = jitTokenEngine.consumeToken({ token, toolName, parameters });
+  if (!result.valid) {
+    return res.status(result.code || 403).json(result);
+  }
+  res.json(result);
+});
+
+app.post('/api/jit/simulate-replay', (req, res) => {
+  const { tokenId } = req.body;
+  const result = jitTokenEngine.simulateReplayAttack(tokenId);
+  res.json(result);
+});
+
+// ==================== ADVERSARIAL RED-TEAM INJECTION LAB ROUTES ====================
+
+app.get('/api/redteam/vectors', (req, res) => {
+  res.json({
+    vectors: adversarialLab.getVectors(),
+  });
+});
+
+app.get('/api/redteam/history', (req, res) => {
+  res.json({
+    history: adversarialLab.getHistory(),
+  });
+});
+
+app.post('/api/redteam/evaluate', async (req, res) => {
+  const { userPrompt, poisonedContext, agentAttemptedTool, agentAttemptedParameters, agentId } = req.body;
+  try {
+    const evaluation = await adversarialLab.evaluateAdversarialAction({
+      userPrompt: userPrompt || '',
+      poisonedContext: poisonedContext || '',
+      agentAttemptedTool: agentAttemptedTool || '',
+      agentAttemptedParameters: agentAttemptedParameters || {},
+      agentId: agentId || 'agent-redteam-evaluator',
+    });
+    res.json(evaluation);
+  } catch (err) {
+    console.error('Adversarial evaluation error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Resilient Server Startup with Automatic Port Fallback & Graceful Windows Cleanup
