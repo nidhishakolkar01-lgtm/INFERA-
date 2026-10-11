@@ -18,12 +18,20 @@ export const KNOWN_AGENTS = {
     name: 'Cloud Infrastructure Ops',
     department: 'Infrastructure',
     trustTier: 'TIER_3', // Higher technical privileges with strict guardrails
-    allowedActions: ['restart_service', 'clear_cache', 'backup_database', 'archive_old_logs'],
+    allowedActions: ['restart_service', 'clear_cache', 'backup_database', 'archive_old_logs', 'read_system_telemetry'],
   },
 };
 
 // Recognized actions catalog with policy definitions
 export const ACTION_CATALOG = {
+  'read_system_telemetry': {
+    description: 'Read real-time CPU, memory, and host process metrics',
+    category: 'READ',
+    impactLevel: 'LOW',
+    isReversible: true,
+    requiresHumanApproval: false,
+    maxRecordsAffected: 1,
+  },
   'read_account_summary': {
     description: 'Fetch customer profile and non-sensitive balance summary',
     category: 'READ',

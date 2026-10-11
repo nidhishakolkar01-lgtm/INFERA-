@@ -18,6 +18,7 @@ import { approvalStore } from './actionGate/approvalStore.js';
 import { PRESET_SCENARIOS } from './actionGate/scenarios.js';
 import { liveState } from './actionGate/liveState.js';
 import { runAutonomousAgent } from './actionGate/agentRunner.js';
+import { getLiveHostTelemetry } from './actionGate/liveHostMetrics.js';
 
 dotenv.config();
 
@@ -90,6 +91,14 @@ app.get('/api/system/state', (req, res) => {
   res.json({
     state: liveState.getState(),
     geminiConfigured: !!aiClient,
+  });
+});
+
+app.get('/api/system/telemetry', (req, res) => {
+  res.json({
+    telemetry: getLiveHostTelemetry(),
+    geminiConfigured: !!aiClient,
+    timestamp: new Date().toISOString(),
   });
 });
 
