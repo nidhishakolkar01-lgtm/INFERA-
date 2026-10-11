@@ -7,3 +7,4 @@ dist/
 build/
 .firebase/
 .DS_Store
+PITCH_SCRIPT.md
