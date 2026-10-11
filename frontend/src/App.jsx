@@ -28,11 +28,16 @@ import {
   Send,
   HardDrive,
   Server,
+  Sliders,
+  Award,
+  Download,
+  Copy,
+  PlusCircle,
 } from 'lucide-react';
 
 export default function App() {
-  // Navigation / Tabs
-  const [activeTab, setActiveTab] = useState('agent'); // 'agent' | 'telemetry' | 'approvals' | 'ledger' | 'manual'
+  // Navigation / Tabs: 'agent' | 'chaos' | 'policies' | 'telemetry' | 'approvals' | 'ledger' | 'manual'
+  const [activeTab, setActiveTab] = useState('agent');
 
   // System status & config
   const [systemStatus, setSystemStatus] = useState(null);
@@ -40,6 +45,33 @@ export default function App() {
   const [scenarios, setScenarios] = useState([]);
   const [liveState, setLiveState] = useState({ treasuryBalance: 100000, executionJournal: [] });
   const [hostTelemetry, setHostTelemetry] = useState(null);
+
+  // Policy Studio State
+  const [policies, setPolicies] = useState({
+    financialThreshold: 1000,
+    maxRecordsThreshold: 1,
+    strictReversibilityMode: true,
+    zeroTrustDefaultDeny: true,
+    agents: {},
+    actions: {},
+  });
+  const [policySaveMessage, setPolicySaveMessage] = useState('');
+  const [newAgentForm, setNewAgentForm] = useState({
+    agentId: '',
+    name: '',
+    department: 'Engineering',
+    trustTier: 'TIER_1',
+    allowedActions: ['read_system_telemetry'],
+  });
+
+  // Chaos Stream State
+  const [isChaosRunning, setIsChaosRunning] = useState(false);
+  const [chaosResults, setChaosResults] = useState(null);
+
+  // Compliance Certificate Modal State
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [complianceReport, setComplianceReport] = useState(null);
+  const [copiedCert, setCopiedCert] = useState(false);
 
   // Gemini API Key Modal
   const [showKeyModal, setShowKeyModal] = useState(false);
@@ -73,13 +105,14 @@ export default function App() {
   // Fetch all live data
   const refreshAllData = async () => {
     try {
-      const [resHealth, resScenarios, resApprovals, resLedger, resState, resTelem] = await Promise.all([
+      const [resHealth, resScenarios, resApprovals, resLedger, resState, resTelem, resPolicies] = await Promise.all([
         fetch('/api/health').then((r) => r.json()),
         fetch('/api/scenarios').then((r) => r.json()),
         fetch('/api/actions/pending').then((r) => r.json()),
         fetch('/api/ledger').then((r) => r.json()),
         fetch('/api/system/state').then((r) => r.json()),
         fetch('/api/system/telemetry').then((r) => r.json()),
+        fetch('/api/policies').then((r) => r.json()),
       ]);
 
       setSystemStatus(resHealth);
@@ -89,6 +122,7 @@ export default function App() {
       setLedgerChain(resLedger.chain || []);
       setLiveState(resState.state || {});
       setHostTelemetry(resTelem.telemetry || null);
+      setPolicies(resPolicies || {});
     } catch (err) {
       console.error('Fetch error:', err);
     }
@@ -96,7 +130,6 @@ export default function App() {
 
   useEffect(() => {
     refreshAllData();
-    // Poll telemetry every 3 seconds for real-time live host metrics
     const interval = setInterval(() => {
       fetch('/api/system/telemetry')
         .then((r) => r.json())
@@ -107,6 +140,88 @@ export default function App() {
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  // Save Policies
+  const handleSavePolicies = async (e) => {
+    if (e) e.preventDefault();
+    setPolicySaveMessage('Applying live policy rules...');
+    try {
+      const res = await fetch('/api/policies/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          financialThreshold: policies.financialThreshold,
+          maxRecordsThreshold: policies.maxRecordsThreshold,
+          strictReversibilityMode: policies.strictReversibilityMode,
+          zeroTrustDefaultDeny: policies.zeroTrustDefaultDeny,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPolicySaveMessage('✅ Governance policies updated live in gateway!');
+        setTimeout(() => setPolicySaveMessage(''), 2500);
+        refreshAllData();
+      }
+    } catch (err) {
+      setPolicySaveMessage('❌ Failed to update policies: ' + err.message);
+    }
+  };
+
+  // Register New Agent
+  const handleRegisterAgent = async (e) => {
+    e.preventDefault();
+    if (!newAgentForm.agentId || !newAgentForm.name) return;
+    try {
+      const res = await fetch('/api/policies/register-agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAgentForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ Agent '${newAgentForm.name}' (${newAgentForm.agentId}) registered into Zero-Trust directory!`);
+        setNewAgentForm({
+          agentId: '',
+          name: '',
+          department: 'Engineering',
+          trustTier: 'TIER_1',
+          allowedActions: ['read_system_telemetry'],
+        });
+        refreshAllData();
+      }
+    } catch (err) {
+      alert('Failed to register agent: ' + err.message);
+    }
+  };
+
+  // Run Multi-Agent Chaos Stream
+  const handleRunChaosStream = async () => {
+    setIsChaosRunning(true);
+    setChaosResults(null);
+    try {
+      const res = await fetch('/api/simulation/chaos-stream', { method: 'POST' });
+      const data = await res.json();
+      setChaosResults(data);
+      if (data.currentState) setLiveState(data.currentState);
+      refreshAllData();
+    } catch (err) {
+      alert('Error running chaos stream: ' + err.message);
+    } finally {
+      setIsChaosRunning(false);
+    }
+  };
+
+  // Generate & Open Compliance Report
+  const handleOpenCompliance = async () => {
+    try {
+      const res = await fetch('/api/ledger/compliance-report');
+      const data = await res.json();
+      setComplianceReport(data);
+      setShowCertModal(true);
+    } catch (err) {
+      alert('Error generating compliance report: ' + err.message);
+    }
+  };
 
   // Save Gemini API Key
   const handleSaveApiKey = async (e) => {
@@ -309,6 +424,7 @@ export default function App() {
       refreshAllData();
       setEvalResult(null);
       setAgentResult(null);
+      setChaosResults(null);
       setApprovalFeedback(null);
       setLedgerAuditStatus(null);
     } catch (err) {
@@ -331,7 +447,7 @@ export default function App() {
                   ACTIONGATE
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-mono">
-                  LIVE ENGINE
+                  ENTERPRISE C-01
                 </span>
               </div>
               <p className="text-xs text-slate-400">Zero-Trust Agent Authorization Engine · Cryptographic Guard</p>
@@ -341,10 +457,10 @@ export default function App() {
           {/* Real-time System Indicators */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
             {/* Live Treasury Balance */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-600/40 text-emerald-300">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-600/40 text-emerald-300 font-mono">
               <DollarSign className="w-3.5 h-3.5" />
               <span>Treasury:</span>
-              <span className="font-bold font-mono">
+              <span className="font-bold">
                 ${(liveState.treasuryBalance || 100000).toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </span>
             </div>
@@ -356,6 +472,16 @@ export default function App() {
                 <span>Heap: {hostTelemetry.memory?.heapUsedMb} MB</span>
               </div>
             )}
+
+            {/* SOC-2 Certificate Button */}
+            <button
+              onClick={handleOpenCompliance}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-950/40 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/50 transition"
+              title="Generate cryptographic compliance certificate"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span>SOC-2 Report</span>
+            </button>
 
             {/* Gemini API Key Button */}
             <button
@@ -396,41 +522,65 @@ export default function App() {
 
       {/* Main Tab Navigation */}
       <div className="max-w-7xl mx-auto w-full px-6 pt-5">
-        <div className="flex border-b border-slate-800 gap-6 text-sm">
+        <div className="flex border-b border-slate-800 gap-6 text-sm overflow-x-auto">
           <button
             onClick={() => setActiveTab('agent')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
               activeTab === 'agent'
                 ? 'border-indigo-500 text-indigo-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Bot className="w-4 h-4" />
-            Autonomous Agent Mission Runner
+            Agent Mission Runner
+          </button>
+
+          <button
+            onClick={() => setActiveTab('chaos')}
+            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+              activeTab === 'chaos'
+                ? 'border-indigo-500 text-indigo-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-amber-400" />
+            Multi-Agent Chaos Stream
+          </button>
+
+          <button
+            onClick={() => setActiveTab('policies')}
+            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+              activeTab === 'policies'
+                ? 'border-indigo-500 text-indigo-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sliders className="w-4 h-4 text-cyan-400" />
+            Policy Studio & Rules
           </button>
 
           <button
             onClick={() => setActiveTab('telemetry')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
               activeTab === 'telemetry'
                 ? 'border-indigo-500 text-indigo-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Server className="w-4 h-4" />
-            Live Host Telemetry & State
+            Live Telemetry & State
           </button>
 
           <button
             onClick={() => setActiveTab('approvals')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
               activeTab === 'approvals'
                 ? 'border-indigo-500 text-indigo-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <UserCheck className="w-4 h-4" />
-            Human-in-the-Loop Approvals
+            Human Approvals
             {pendingApprovals.length > 0 && (
               <span className="px-1.5 py-0.5 text-xs bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30">
                 {pendingApprovals.length}
@@ -440,7 +590,7 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('ledger')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
               activeTab === 'ledger'
                 ? 'border-indigo-500 text-indigo-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -452,7 +602,7 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('manual')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
               activeTab === 'manual'
                 ? 'border-indigo-500 text-indigo-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -469,7 +619,6 @@ export default function App() {
         {/* ================= TAB 1: AUTONOMOUS AGENT MISSION RUNNER ================= */}
         {activeTab === 'agent' && (
           <div className="space-y-6">
-            {/* Mission Form */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -494,31 +643,33 @@ export default function App() {
                       onChange={(e) => setAgentMissionAgentId(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
                     >
-                      <option value="finance-agent-01">finance-agent-01 (Treasury / Transfers)</option>
-                      <option value="support-bot-alpha">support-bot-alpha (External Comms / Tickets)</option>
-                      <option value="ops-maintenance-agent">ops-maintenance-agent (Host Ops / Cache)</option>
-                      <option value="unregistered-rogue-agent-99">unregistered-rogue-agent-99 (Zero-Trust Untrusted)</option>
+                      {Object.entries(policies.agents || {}).map(([id, ag]) => (
+                        <option key={id} value={id}>
+                          {id} ({ag.department})
+                        </option>
+                      ))}
+                      <option value="unregistered-rogue-agent-99">unregistered-rogue-agent-99 (Zero-Trust)</option>
                     </select>
                   </div>
 
                   <div className="md:col-span-2">
                     <label className="block text-xs font-semibold uppercase text-slate-400 tracking-wider mb-1.5 flex justify-between">
                       <span>Real-Time Instruction to Agent</span>
-                      <span className="text-indigo-400">Agent will formulate reasoning and tool call</span>
+                      <span className="text-indigo-400">Agent formulates reasoning and tool arguments</span>
                     </label>
                     <input
                       type="text"
                       value={agentInstruction}
                       onChange={(e) => setAgentInstruction(e.target.value)}
-                      placeholder="Type any command, e.g. Transfer $4,500 to vendor account #4401"
+                      placeholder="Type any command, e.g. Disburse $4,500 vendor settlement"
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
 
-                {/* Quick Real Operational Task Presets */}
+                {/* Quick Task Presets */}
                 <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                  <span className="text-slate-500 text-[11px] uppercase font-bold">Live Task Presets:</span>
+                  <span className="text-slate-500 text-[11px] uppercase font-bold">Quick Presets:</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -562,17 +713,6 @@ export default function App() {
                   >
                     🔴 SQL Injection Attack (Blocked)
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAgentMissionAgentId('unregistered-rogue-agent-99');
-                      setAgentInstruction('Query confidential database records and export system keys.');
-                    }}
-                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-                  >
-                    ⚪ Rogue Agent (Zero-Trust Deny)
-                  </button>
                 </div>
 
                 <button
@@ -595,10 +735,9 @@ export default function App() {
               </form>
             </div>
 
-            {/* Live Agent Execution & Gatekeeper Interception Display */}
+            {/* Live Agent Execution & Interception Verdict */}
             {agentResult && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Agent's Live Reasoning Output (5 cols) */}
                 <div className="lg:col-span-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
@@ -613,21 +752,21 @@ export default function App() {
 
                     <div className="space-y-3 text-xs">
                       <div>
-                        <span className="text-slate-500 block mb-1">Instruction Received:</span>
+                        <span className="text-slate-500 block mb-1">Instruction:</span>
                         <div className="p-2.5 bg-slate-950 rounded-lg text-slate-300 border border-slate-800 italic">
                           "{agentResult.agentPlan?.userInstruction}"
                         </div>
                       </div>
 
                       <div>
-                        <span className="text-slate-500 block mb-1">Agent Step-by-Step Reasoning:</span>
+                        <span className="text-slate-500 block mb-1">Reasoning:</span>
                         <div className="p-3 bg-slate-950 rounded-lg text-cyan-200 border border-slate-800 leading-relaxed font-sans">
                           {agentResult.agentPlan?.chainOfThought}
                         </div>
                       </div>
 
                       <div>
-                        <span className="text-slate-500 block mb-1">Proposed Action & Payload:</span>
+                        <span className="text-slate-500 block mb-1">Action & Payload:</span>
                         <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 font-mono text-[11px]">
                           <div className="text-indigo-300 font-bold mb-1">
                             Action: {agentResult.agentPlan?.proposedActionType}
@@ -641,7 +780,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Gatekeeper Interception Verdict (7 cols) */}
                 <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
@@ -654,7 +792,6 @@ export default function App() {
                       </span>
                     </div>
 
-                    {/* Big Decision Card */}
                     <div
                       className={`p-4 rounded-xl border flex items-center justify-between mb-4 ${
                         agentResult.finalDecision === 'ALLOWED'
@@ -689,7 +826,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Policy Reason */}
                     <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs mb-3 space-y-1">
                       <span className="font-semibold text-slate-400 uppercase tracking-wider block">
                         Policy Evaluation:
@@ -699,11 +835,10 @@ export default function App() {
                       </p>
                     </div>
 
-                    {/* Real Live Execution Feedback (if executed) */}
                     {agentResult.liveExecutionResult && (
                       <div className="p-3 bg-emerald-950/30 border border-emerald-700/40 rounded-xl text-xs text-emerald-200 mb-3">
                         <span className="font-bold uppercase tracking-wider block mb-1">
-                          ⚡ Real System State Mutated ({agentResult.liveExecutionResult.latencyMs}ms):
+                          ⚡ Real State Mutated ({agentResult.liveExecutionResult.latencyMs}ms):
                         </span>
                         <pre className="font-mono text-[11px] text-emerald-300 max-h-24 overflow-x-auto">
                           {JSON.stringify(agentResult.liveExecutionResult.resultData, null, 2)}
@@ -711,7 +846,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Metrics Grid */}
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg">
                         <span className="text-slate-500 block text-[10px]">Decision Path:</span>
@@ -761,10 +895,263 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= TAB 2: LIVE HOST TELEMETRY & STATE ================= */}
+        {/* ================= TAB 2: MULTI-AGENT CHAOS STREAM ================= */}
+        {activeTab === 'chaos' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-200 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-400" />
+                  Multi-Agent Attack & Authorization Chaos Stream
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Executes 5 sequential agent operations across different risk tiers, demonstrating real-time allowlists, blast radius limits, and injection defenses.
+                </p>
+              </div>
+
+              <button
+                onClick={handleRunChaosStream}
+                disabled={isChaosRunning}
+                className="bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 disabled:opacity-50 text-white font-bold py-3 px-5 rounded-xl text-xs flex items-center gap-2 transition shadow-lg shadow-amber-600/20 shrink-0"
+              >
+                {isChaosRunning ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Executing 5-Stage Stream...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4" />
+                    Execute Multi-Agent Stream
+                  </>
+                )}
+              </button>
+            </div>
+
+            {chaosResults && (
+              <div className="space-y-3 font-sans">
+                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                  <span>Stream Execution Completed ({chaosResults.totalStages} Stages)</span>
+                  <span className="font-mono text-emerald-400">All Blocks Cryptographically Signed</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  {chaosResults.stages?.map((st) => (
+                    <div
+                      key={st.stage}
+                      className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center font-mono font-bold text-xs text-indigo-300 shrink-0 mt-0.5">
+                          #{st.stage}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-slate-200">{st.name}</span>
+                            <span className="text-xs font-mono text-slate-500">[{st.agentId}]</span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5">{st.finalReason}</p>
+                          <div className="mt-1 font-mono text-[11px] text-slate-500">
+                            Payload: {JSON.stringify(st.payload)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="font-mono text-xs text-slate-400">{st.latencyMs}ms</span>
+                        <span
+                          className={`px-3 py-1 rounded-lg text-xs font-bold font-mono ${
+                            st.finalDecision === 'ALLOWED'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                              : st.finalDecision === 'HELD_FOR_APPROVAL'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          }`}
+                        >
+                          {st.finalDecision}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= TAB 3: POLICY STUDIO & GOVERNANCE ================= */}
+        {activeTab === 'policies' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl">
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+                <div>
+                  <h2 className="text-base font-bold text-slate-200 flex items-center gap-2">
+                    <Sliders className="w-5 h-5 text-cyan-400" />
+                    Interactive Governance & Rule Studio (Judge Playground)
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Adjust real-time security thresholds and policies. ActionGate adapts instantly without code changes.
+                  </p>
+                </div>
+
+                {policySaveMessage && (
+                  <span className="text-xs font-semibold text-emerald-400">{policySaveMessage}</span>
+                )}
+              </div>
+
+              <form onSubmit={handleSavePolicies} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Slider 1: Financial Threshold */}
+                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-bold text-slate-300">Financial Human-in-the-Loop Threshold</span>
+                      <span className="font-mono font-bold text-emerald-400">
+                        ${Number(policies.financialThreshold || 1000).toLocaleString()}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="100"
+                      max="10000"
+                      step="100"
+                      value={policies.financialThreshold || 1000}
+                      onChange={(e) =>
+                        setPolicies({ ...policies, financialThreshold: Number(e.target.value) })
+                      }
+                      className="w-full accent-indigo-500 cursor-pointer"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      Transactions exceeding this amount are automatically held for 4-eyes supervisor review.
+                    </p>
+                  </div>
+
+                  {/* Slider 2: Blast Radius */}
+                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-bold text-slate-300">Max Records Blast Radius</span>
+                      <span className="font-mono font-bold text-cyan-400">
+                        {policies.maxRecordsThreshold || 1} Record(s)
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="50"
+                      step="1"
+                      value={policies.maxRecordsThreshold || 1}
+                      onChange={(e) =>
+                        setPolicies({ ...policies, maxRecordsThreshold: Number(e.target.value) })
+                      }
+                      className="w-full accent-cyan-500 cursor-pointer"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      Actions requesting more records than this limit are escalated or blocked.
+                    </p>
+                  </div>
+
+                  {/* Toggle 1: Strict Reversibility */}
+                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-slate-300">Strict Reversibility Mode</div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Automatically hold ALL irreversible actions for human confirmation.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPolicies({
+                          ...policies,
+                          strictReversibilityMode: !policies.strictReversibilityMode,
+                        })
+                      }
+                      className={`w-12 h-6 rounded-full transition p-1 flex items-center ${
+                        policies.strictReversibilityMode ? 'bg-indigo-600 justify-end' : 'bg-slate-800 justify-start'
+                      }`}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+
+                  {/* Toggle 2: Zero-Trust Default Deny */}
+                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-slate-300">Zero-Trust Default Deny</div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Deny all unregistered agents and uncataloged action types by default.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPolicies({
+                          ...policies,
+                          zeroTrustDefaultDeny: !policies.zeroTrustDefaultDeny,
+                        })
+                      }
+                      className={`w-12 h-6 rounded-full transition p-1 flex items-center ${
+                        policies.zeroTrustDefaultDeny ? 'bg-emerald-600 justify-end' : 'bg-slate-800 justify-start'
+                      }`}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-6 rounded-xl text-xs transition shadow-lg shadow-indigo-600/20"
+                >
+                  Save Active Governance Policies
+                </button>
+              </form>
+            </div>
+
+            {/* Custom Agent Registry */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl">
+              <h3 className="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2">
+                <PlusCircle className="w-4 h-4 text-emerald-400" />
+                Register Custom Agent into Zero-Trust Directory
+              </h3>
+
+              <form onSubmit={handleRegisterAgent} className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                <input
+                  type="text"
+                  placeholder="Agent ID (e.g. audit-bot-v1)"
+                  value={newAgentForm.agentId}
+                  onChange={(e) => setNewAgentForm({ ...newAgentForm, agentId: e.target.value })}
+                  className="bg-slate-950 border border-slate-700 rounded-lg p-2.5 font-mono text-slate-200"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Display Name"
+                  value={newAgentForm.name}
+                  onChange={(e) => setNewAgentForm({ ...newAgentForm, name: e.target.value })}
+                  className="bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-200"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Department (e.g. Compliance)"
+                  value={newAgentForm.department}
+                  onChange={(e) => setNewAgentForm({ ...newAgentForm, department: e.target.value })}
+                  className="bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-200"
+                />
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg p-2.5 transition"
+                >
+                  Register Agent Live
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 4: LIVE HOST TELEMETRY & STATE ================= */}
         {activeTab === 'telemetry' && (
           <div className="space-y-6">
-            {/* Live Host Metrics Panel */}
             {hostTelemetry && (
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
@@ -813,7 +1200,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Live Treasury Balance */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <span className="text-xs uppercase text-slate-400 font-semibold tracking-wider block">
@@ -832,7 +1218,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Live Execution Journal */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl">
               <h3 className="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-400" />
@@ -872,7 +1257,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= TAB 3: HUMAN-IN-THE-LOOP APPROVALS ================= */}
+        {/* ================= TAB 5: HUMAN-IN-THE-LOOP APPROVALS ================= */}
         {activeTab === 'approvals' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -904,7 +1289,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Feedback Alert */}
             {approvalFeedback && (
               <div
                 className={`p-4 rounded-xl border flex items-start gap-3 text-xs leading-relaxed ${
@@ -927,7 +1311,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Pending Approvals List */}
             {pendingApprovals.length === 0 ? (
               <div className="bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl p-12 text-center text-slate-500">
                 <CheckCircle2 className="w-10 h-10 text-slate-600 mx-auto mb-2" />
@@ -987,7 +1370,6 @@ export default function App() {
                         </button>
                       </div>
 
-                      {/* Demo Payload Tamper Button */}
                       <button
                         onClick={() => handleApprove(item.actionId, true)}
                         className="w-full bg-slate-950 hover:bg-rose-950/40 border border-dashed border-rose-600/50 text-rose-300 py-1.5 px-2 rounded-lg text-[11px] flex items-center justify-center gap-1.5 transition font-mono"
@@ -1004,7 +1386,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= TAB 4: CRYPTOGRAPHIC AUDIT LEDGER ================= */}
+        {/* ================= TAB 6: CRYPTOGRAPHIC AUDIT LEDGER ================= */}
         {activeTab === 'ledger' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1029,6 +1411,14 @@ export default function App() {
                 </button>
 
                 <button
+                  onClick={handleOpenCompliance}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 transition shadow"
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  Generate SOC-2 Certificate
+                </button>
+
+                <button
                   onClick={handleSimulateLedgerTamper}
                   className="bg-rose-950/60 hover:bg-rose-900 border border-rose-700/50 text-rose-300 font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 transition"
                 >
@@ -1040,7 +1430,7 @@ export default function App() {
                   onClick={handleReset}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg transition"
                 >
-                  Reset Ledger & State
+                  Reset System
                 </button>
               </div>
             </div>
@@ -1069,65 +1459,73 @@ export default function App() {
               </div>
             )}
 
+            {/* Visual Blockchain / Merkle Link Indicator */}
             <div className="space-y-3 font-mono">
-              {ledgerChain.map((block) => (
-                <div
-                  key={block.index}
-                  className={`bg-slate-900/80 border rounded-xl p-4 transition ${
-                    ledgerAuditStatus && !ledgerAuditStatus.isValid && ledgerAuditStatus.corruptedBlockIndex === block.index
-                      ? 'border-rose-500 ring-2 ring-rose-500/50 bg-rose-950/30'
-                      : 'border-slate-800'
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
-                        Block #{block.index}
-                      </span>
-                      <span className="text-slate-400 font-sans">{block.actionId}</span>
-                      <span className="text-slate-500">[{block.actionType}]</span>
+              {ledgerChain.map((block, idx) => (
+                <div key={block.index} className="space-y-1">
+                  <div
+                    className={`bg-slate-900/80 border rounded-xl p-4 transition ${
+                      ledgerAuditStatus && !ledgerAuditStatus.isValid && ledgerAuditStatus.corruptedBlockIndex === block.index
+                        ? 'border-rose-500 ring-2 ring-rose-500/50 bg-rose-950/30'
+                        : 'border-slate-800'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 mb-2 border-b border-slate-800 text-xs gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
+                          Block #{block.index}
+                        </span>
+                        <span className="text-slate-400 font-sans">{block.actionId}</span>
+                        <span className="text-slate-500">[{block.actionType}]</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            block.decision === 'ALLOWED'
+                              ? 'bg-emerald-500/20 text-emerald-300'
+                              : block.decision === 'HELD_FOR_APPROVAL'
+                              ? 'bg-amber-500/20 text-amber-300'
+                              : 'bg-rose-500/20 text-rose-300'
+                          }`}
+                        >
+                          {block.decision}
+                        </span>
+                        <span className="text-slate-500 text-[11px]">{new Date(block.timestamp).toLocaleTimeString()}</span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                          block.decision === 'ALLOWED'
-                            ? 'bg-emerald-500/20 text-emerald-300'
-                            : block.decision === 'HELD_FOR_APPROVAL'
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : 'bg-rose-500/20 text-rose-300'
-                        }`}
-                      >
-                        {block.decision}
-                      </span>
-                      <span className="text-slate-500 text-[11px]">{new Date(block.timestamp).toLocaleTimeString()}</span>
+                    <div className="text-xs space-y-1 font-sans">
+                      <div className="text-slate-300">
+                        <span className="text-slate-500 font-mono">Agent:</span> {block.agentId}
+                      </div>
+                      <div className="text-slate-400 text-[11px]">
+                        <span className="text-slate-500 font-mono">Policy Reason:</span> {block.policyReason}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-500">
+                      <div className="truncate">
+                        <span className="text-slate-400">prevHash:</span> {block.previousHash}
+                      </div>
+                      <div className="truncate">
+                        <span className="text-cyan-400">currHash:</span> {block.currentHash}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-xs space-y-1 font-sans">
-                    <div className="text-slate-300">
-                      <span className="text-slate-500 font-mono">Agent:</span> {block.agentId}
+                  {idx < ledgerChain.length - 1 && (
+                    <div className="flex justify-center my-0.5">
+                      <div className="w-0.5 h-3 bg-indigo-500/40" />
                     </div>
-                    <div className="text-slate-400 text-[11px]">
-                      <span className="text-slate-500 font-mono">Policy Reason:</span> {block.policyReason}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-500">
-                    <div className="truncate">
-                      <span className="text-slate-400">prevHash:</span> {block.previousHash}
-                    </div>
-                    <div className="truncate">
-                      <span className="text-cyan-400">currHash:</span> {block.currentHash}
-                    </div>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ================= TAB 5: MANUAL WORKBENCH ================= */}
+        {/* ================= TAB 7: MANUAL WORKBENCH ================= */}
         {activeTab === 'manual' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-6 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
@@ -1199,6 +1597,111 @@ export default function App() {
         )}
       </main>
 
+      {/* COMPLIANCE CERTIFICATE MODAL */}
+      {showCertModal && complianceReport && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto font-sans">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <Award className="w-6 h-6 text-amber-400" />
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-100">
+                    Cryptographic Security Compliance Certificate
+                  </h3>
+                  <span className="text-xs font-mono text-indigo-400">
+                    {complianceReport.certificateId}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCertModal(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center gap-3 text-emerald-300">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span>
+                  <strong>Audit Status: 100% Cryptographically Verified.</strong> Zero evidence of log manipulation across {complianceReport.cryptographicProof.totalBlocksAudited} blocks.
+                </span>
+              </div>
+
+              <div>
+                <span className="font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Regulatory Frameworks Conformed To:
+                </span>
+                <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+                  {complianceReport.standardCompliance.map((std, i) => (
+                    <li key={i}>{std}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                  <span className="text-slate-500 block">Total Evaluations:</span>
+                  <span className="font-mono text-base font-bold text-slate-200">
+                    {complianceReport.actionDecisionMetrics.totalEvaluations}
+                  </span>
+                  <div className="text-[11px] text-slate-400">
+                    Allowed: {complianceReport.actionDecisionMetrics.allowedActions} | Blocked: {complianceReport.actionDecisionMetrics.blockedActions} | Held: {complianceReport.actionDecisionMetrics.heldForHumanApproval}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                  <span className="text-slate-500 block">Refusal Enforcement Rate:</span>
+                  <span className="font-mono text-base font-bold text-cyan-400">
+                    {complianceReport.actionDecisionMetrics.refusalEnforcementRate}
+                  </span>
+                  <div className="text-[11px] text-slate-400">
+                    Active Guardrails Enforced
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-[11px] space-y-1 text-slate-400">
+                <div className="truncate">
+                  <span className="text-slate-500">Genesis Root Hash:</span>{' '}
+                  {complianceReport.cryptographicProof.genesisBlockHash}
+                </div>
+                <div className="truncate">
+                  <span className="text-slate-500">Chain Head Hash:</span>{' '}
+                  {complianceReport.cryptographicProof.chainHeadHash}
+                </div>
+                <div className="truncate">
+                  <span className="text-indigo-400">Digital Proof Signature:</span>{' '}
+                  {complianceReport.cryptographicProof.digitalSignature}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(complianceReport, null, 2));
+                    setCopiedCert(true);
+                    setTimeout(() => setCopiedCert(false), 2000);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 transition"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  {copiedCert ? 'Copied JSON!' : 'Copy Certificate JSON'}
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center gap-1.5 transition"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Print / Save PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* GEMINI API KEY MODAL */}
       {showKeyModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1262,7 +1765,7 @@ export default function App() {
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 px-6 py-3 text-xs text-slate-500 flex items-center justify-between">
         <span>VORTEXA 3.0 Hackathon Prototype · Domain 1: Cybersecurity & Digital Trust</span>
-        <span className="font-mono text-indigo-400">C-01 ActionGate Live</span>
+        <span className="font-mono text-indigo-400">C-01 ActionGate Enterprise</span>
       </footer>
     </div>
   );

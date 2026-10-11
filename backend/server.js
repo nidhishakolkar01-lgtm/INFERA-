@@ -11,6 +11,7 @@ import {
   ACTION_CATALOG,
   evaluateDeterministicPolicy,
   hashPayload,
+  policyGovernance,
 } from './actionGate/policyEngine.js';
 import { evaluateAiIntent } from './actionGate/aiIntentEvaluator.js';
 import { auditLedger } from './actionGate/cryptographicLedger.js';
@@ -19,6 +20,8 @@ import { PRESET_SCENARIOS } from './actionGate/scenarios.js';
 import { liveState } from './actionGate/liveState.js';
 import { runAutonomousAgent } from './actionGate/agentRunner.js';
 import { getLiveHostTelemetry } from './actionGate/liveHostMetrics.js';
+import { runChaosSimulationStream } from './actionGate/chaosSimulator.js';
+import { generateComplianceReport } from './actionGate/complianceReport.js';
 
 dotenv.config();
 
@@ -136,6 +139,49 @@ app.post('/api/config/toggle-ai-offline', (req, res) => {
       ? '⚡ Simulated AI Offline Mode ENGAGED. System will strictly use deterministic fallback.'
       : '✅ AI Online Mode Restored. Gemini AI Intent Analyzer active.',
   });
+});
+
+// ==================== POLICY STUDIO & GOVERNANCE ROUTES ====================
+app.get('/api/policies', (req, res) => {
+  res.json(policyGovernance.getGovernanceState());
+});
+
+app.post('/api/policies/update', (req, res) => {
+  const updated = policyGovernance.updateSettings(req.body);
+  res.json({ success: true, updatedSettings: updated });
+});
+
+app.post('/api/policies/register-agent', (req, res) => {
+  try {
+    const newAgent = policyGovernance.registerAgent(req.body);
+    res.json({ success: true, agent: newAgent });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/policies/reset', (req, res) => {
+  policyGovernance.reset();
+  res.json({ success: true, message: 'Policy settings reset to defaults.' });
+});
+
+// ==================== MULTI-AGENT CHAOS STREAM ====================
+app.post('/api/simulation/chaos-stream', async (req, res) => {
+  try {
+    const streamResult = await runChaosSimulationStream({
+      aiClient: systemConfig.simulateAiOffline ? null : aiClient,
+      simulateAiOffline: systemConfig.simulateAiOffline,
+    });
+    res.json(streamResult);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to run chaos simulation', details: err.message });
+  }
+});
+
+// ==================== COMPLIANCE CERTIFICATE ====================
+app.get('/api/ledger/compliance-report', (req, res) => {
+  const report = generateComplianceReport();
+  res.json(report);
 });
 
 // Preset Demo Scenarios
