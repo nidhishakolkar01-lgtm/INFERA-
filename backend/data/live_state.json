@@ -1,0 +1,467 @@
+{
+  "treasuryBalance": 101900,
+  "executionJournal": [
+    {
+      "executionId": "EXEC-582144",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:33:02.144Z",
+      "latencyMs": 0.016,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_5",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-582129",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:33:02.129Z",
+      "latencyMs": 0.016,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_4",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-582116",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:33:02.116Z",
+      "latencyMs": 0.012,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_3",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-582103",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:33:02.103Z",
+      "latencyMs": 0.018,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_2",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-582092",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:33:02.092Z",
+      "latencyMs": 0.013,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_1",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-582047",
+      "actionType": "restart_service",
+      "authorizedBy": "ops-maintenance-agent",
+      "timestamp": "2026-10-11T13:33:02.047Z",
+      "latencyMs": 0.037,
+      "resultData": {
+        "action": "restart_service",
+        "serviceName": "worker_node",
+        "restartedAt": "2026-10-11T13:33:02.047Z",
+        "signal": "SIGHUP_RELOAD_SUCCESS"
+      }
+    },
+    {
+      "executionId": "EXEC-574635",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:32:54.635Z",
+      "latencyMs": 0.015,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 500,
+          "recipient": "temporary_escrow_batch"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-573805",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:32:53.805Z",
+      "latencyMs": 0.009,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_5"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-573801",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:32:53.801Z",
+      "latencyMs": 0.015,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_4"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-573795",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:32:53.795Z",
+      "latencyMs": 0.021,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_3"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-573788",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:32:53.788Z",
+      "latencyMs": 0.021,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_2"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-573781",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T13:32:53.781Z",
+      "latencyMs": 0.021,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_1"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-102386",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:42.386Z",
+      "latencyMs": 0.021,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_5",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-102370",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:42.370Z",
+      "latencyMs": 0.018,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_4",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-102351",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:42.351Z",
+      "latencyMs": 0.03,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_3",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-102336",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:42.336Z",
+      "latencyMs": 0.034,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_2",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-102316",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:42.316Z",
+      "latencyMs": 0.022,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "recipient": "escrow_1",
+          "amount": 900
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-102257",
+      "actionType": "restart_service",
+      "authorizedBy": "ops-maintenance-agent",
+      "timestamp": "2026-10-11T12:51:42.257Z",
+      "latencyMs": 0.03,
+      "resultData": {
+        "action": "restart_service",
+        "serviceName": "worker_node",
+        "restartedAt": "2026-10-11T12:51:42.257Z",
+        "signal": "SIGHUP_RELOAD_SUCCESS"
+      }
+    },
+    {
+      "executionId": "EXEC-079304",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:19.304Z",
+      "latencyMs": 0.019,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 500,
+          "recipient": "temporary_escrow_batch"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-078469",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:18.468Z",
+      "latencyMs": 0.023,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_5"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-078462",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:18.462Z",
+      "latencyMs": 0.018,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_4"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-078456",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:18.456Z",
+      "latencyMs": 0.018,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_3"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-078448",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:18.448Z",
+      "latencyMs": 0.017,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_2"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-078426",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:51:18.426Z",
+      "latencyMs": 0.044,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_1"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-476210",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:41:16.209Z",
+      "latencyMs": 0.021,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 500,
+          "recipient": "temporary_escrow_batch"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-475353",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:41:15.353Z",
+      "latencyMs": 0.033,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_5"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-475344",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:41:15.344Z",
+      "latencyMs": 0.027,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_4"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-475335",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:41:15.335Z",
+      "latencyMs": 0.012,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_3"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-475330",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:41:15.330Z",
+      "latencyMs": 0.013,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_2"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    },
+    {
+      "executionId": "EXEC-475323",
+      "actionType": "reserve_escrow_funds",
+      "authorizedBy": "finance-agent-01",
+      "timestamp": "2026-10-11T12:41:15.322Z",
+      "latencyMs": 0.089,
+      "resultData": {
+        "action": "reserve_escrow_funds",
+        "payloadProcessed": {
+          "amount": 900,
+          "recipient": "siphon_wallet_1"
+        },
+        "status": "EXECUTED_SUCCESSFULLY"
+      }
+    }
+  ],
+  "lastActionExecuted": {
+    "executionId": "EXEC-582144",
+    "actionType": "reserve_escrow_funds",
+    "authorizedBy": "finance-agent-01",
+    "timestamp": "2026-10-11T13:33:02.144Z",
+    "latencyMs": 0.016,
+    "resultData": {
+      "action": "reserve_escrow_funds",
+      "payloadProcessed": {
+        "recipient": "escrow_5",
+        "amount": 900
+      },
+      "status": "EXECUTED_SUCCESSFULLY"
+    }
+  },
+  "updatedAt": "2026-10-11T13:33:02.144Z"
+}

@@ -17,6 +17,32 @@ export class JITTokenEngine {
     this.issuedTokens = new Map(); // tokenId -> tokenMetadata
     this.defaultTtlMs = 60 * 1000; // 60 seconds TTL
     this.securityEvents = []; // Audit log of security alerts (replay attempts, expired executions)
+
+    // Periodic sweep every 60s to prevent unbounded memory growth under load
+    this._cleanupInterval = setInterval(() => {
+      this.pruneExpired();
+    }, 60000);
+    if (this._cleanupInterval.unref) {
+      this._cleanupInterval.unref();
+    }
+  }
+
+  /**
+   * Prunes expired JIT tokens and aged nonces to prevent unbounded heap memory leaks.
+   */
+  pruneExpired() {
+    const now = Date.now();
+    for (const [tokenId, token] of this.issuedTokens.entries()) {
+      if (token && now > token.expiresAt + 60000) {
+        this.issuedTokens.delete(tokenId);
+      }
+    }
+    const nonceCutoff = now - (10 * 60 * 1000);
+    for (const [nonce, data] of this.spentNonces.entries()) {
+      if (data && data.spentAt && data.spentAt < nonceCutoff) {
+        this.spentNonces.delete(nonce);
+      }
+    }
   }
 
   _canonicalize(obj) {

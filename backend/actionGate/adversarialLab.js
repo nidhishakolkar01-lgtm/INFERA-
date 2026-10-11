@@ -105,14 +105,56 @@ export class AdversarialLab {
   }
 
   /**
+   * Mathematical Vector Space TF-IDF Cosine Divergence Calculator.
+   * Computes the mathematical angle (1 - cosine_similarity) between the human
+   * intent vector and synthesized tool invocation vector in n-dimensional term space.
+   */
+  _computeVectorCosineDivergence(userIntent, toolName, parameters) {
+    const textA = (userIntent || '').toLowerCase();
+    const textB = `${toolName || ''} ${JSON.stringify(parameters || {})}`.toLowerCase();
+
+    const tokenize = (t) => t.match(/[a-z0-9_-]{2,}/g) || [];
+    const tokensA = tokenize(textA);
+    const tokensB = tokenize(textB);
+
+    const vocab = new Set([...tokensA, ...tokensB]);
+    if (vocab.size === 0) return 0;
+
+    const vecA = {};
+    const vecB = {};
+    for (const word of vocab) {
+      vecA[word] = 0;
+      vecB[word] = 0;
+    }
+    for (const t of tokensA) vecA[t] = (vecA[t] || 0) + 1;
+    for (const t of tokensB) vecB[t] = (vecB[t] || 0) + 1;
+
+    let dot = 0;
+    let magA = 0;
+    let magB = 0;
+    for (const word of vocab) {
+      dot += vecA[word] * vecB[word];
+      magA += vecA[word] * vecA[word];
+      magB += vecB[word] * vecB[word];
+    }
+
+    magA = Math.sqrt(magA);
+    magB = Math.sqrt(magB);
+
+    const cosineSimilarity = (magA && magB) ? (dot / (magA * magB)) : 0;
+    return Math.max(0, Math.min(1, 1 - cosineSimilarity));
+  }
+
+  /**
    * Deterministic semantic and lexical divergence calculator.
-   * Compares the Authorized Human Intent vs Synthesized Agent Tool Payload.
+   * Blends mathematical cosine vector distance with capability boundary checks.
    */
   _computeDeterministicDivergence(userIntent, toolName, parameters) {
     const intentLower = (userIntent || '').toLowerCase();
     const toolLower = (toolName || '').toLowerCase();
     const paramsStr = JSON.stringify(parameters || {}).toLowerCase();
 
+    const vectorCosineDistance = this._computeVectorCosineDivergence(userIntent, toolName, parameters);
     let divergenceScore = 0;
     const anomalyFlags = [];
 
@@ -193,6 +235,7 @@ export class AdversarialLab {
 
     return {
       divergenceScore: finalScore,
+      vectorCosineDistance: Number(vectorCosineDistance.toFixed(4)),
       anomalyFlags,
       tokenOverlapPercentage: Math.round(tokenOverlap * 100)
     };

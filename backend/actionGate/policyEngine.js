@@ -6,7 +6,7 @@ const DEFAULT_KNOWN_AGENTS = {
     name: 'Finance & Billing Agent',
     department: 'Finance',
     trustTier: 'TIER_2',
-    allowedActions: ['issue_refund', 'transfer_funds', 'fetch_invoice', 'read_account_summary'],
+    allowedActions: ['issue_refund', 'transfer_funds', 'reserve_escrow_funds', 'fetch_invoice', 'read_account_summary'],
   },
   'support-bot-alpha': {
     name: 'Customer Support Bot',
@@ -24,6 +24,14 @@ const DEFAULT_KNOWN_AGENTS = {
 
 // Default Recognized Actions Catalog
 const DEFAULT_ACTION_CATALOG = {
+  'reserve_escrow_funds': {
+    description: 'Soft reserve escrow funds for pending settlement',
+    category: 'FINANCIAL',
+    impactLevel: 'LOW',
+    isReversible: true,
+    requiresHumanApproval: false,
+    maxRecordsAffected: 1,
+  },
   'read_system_telemetry': {
     description: 'Read real-time CPU, memory, and host process metrics',
     category: 'READ',

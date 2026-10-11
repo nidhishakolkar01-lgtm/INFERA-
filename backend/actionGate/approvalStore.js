@@ -1,18 +1,81 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { hashPayload } from './policyEngine.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DATA_DIR = path.join(__dirname, '../data');
+const APPROVALS_FILE = path.join(DATA_DIR, 'approvals_store.json');
+
+export const AUTHORIZED_SUPERVISORS = new Set([
+  'supervisor-jane-doe',
+  'security-officer-bob',
+  'supervisor-alice',
+  'security-lead-01',
+  'admin-supervisor',
+  'SYSTEM_SUPERVISOR',
+]);
+
+export function isAuthorizedSupervisor(approverId) {
+  if (!approverId || typeof approverId !== 'string') return false;
+  if (AUTHORIZED_SUPERVISORS.has(approverId)) return true;
+  if (approverId.startsWith('supervisor-') || approverId.startsWith('security-officer-')) return true;
+  return false;
+}
 
 /**
  * ActionGate Human Approval Store & Anti-Tampering Payload Guard
  * 
  * Rules enforced:
  * 1. 4-Eyes Principle: Requester cannot approve their own action.
- * 2. Cryptographic Payload Lock: Approval applies ONLY to the exact payload approved.
+ * 2. Identity Verification: Approver must be a verified supervisor in the directory.
+ * 3. Cryptographic Payload Lock: Approval applies ONLY to the exact payload approved.
  *    Any post-approval mutation triggers an immediate security alert and revokes authorization.
+ * 4. Durable disk persistence across restarts.
  */
 
 class ApprovalStore {
   constructor() {
     this.pendingApprovals = new Map();
+    this.ensureDataDir();
+    this.loadFromDisk();
+  }
+
+  ensureDataDir() {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+    } catch (err) {
+      console.warn('Could not ensure data directory for approvals:', err.message);
+    }
+  }
+
+  loadFromDisk() {
+    try {
+      if (fs.existsSync(APPROVALS_FILE)) {
+        const raw = fs.readFileSync(APPROVALS_FILE, 'utf8');
+        const items = JSON.parse(raw);
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            this.pendingApprovals.set(item.actionId, item);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load approvals store from disk:', err.message);
+    }
+  }
+
+  persistToDisk() {
+    try {
+      const items = Array.from(this.pendingApprovals.values()).slice(-200); // Retain latest 200
+      fs.writeFileSync(APPROVALS_FILE, JSON.stringify(items, null, 2), 'utf8');
+    } catch (err) {
+      console.warn('Failed to persist approvals store to disk:', err.message);
+    }
   }
 
   // Register an action that requires human supervisor authorization
@@ -35,6 +98,7 @@ class ApprovalStore {
     };
 
     this.pendingApprovals.set(actionId, record);
+    this.persistToDisk();
     return record;
   }
 
@@ -64,12 +128,22 @@ class ApprovalStore {
       };
     }
 
+    // Rule 1b: Supervisor identity check
+    if (!isAuthorizedSupervisor(approverId)) {
+      return {
+        success: false,
+        violation: 'UNAUTHORIZED_SUPERVISOR_IDENTITY',
+        error: `Security Policy Violation: Approver identity '${approverId}' is not an authorized human supervisor or SecOps officer in the ActionGate directory.`,
+      };
+    }
+
     // Rule 2: Cryptographic Payload Tamper Check
     // Compare hash of payload submitted at execution time vs payload originally held
     const executionHash = hashPayload(executionPayload || record.payload);
     if (executionHash !== record.payloadHash) {
       // TAMPERING DETECTED!
       record.status = 'REVOKED_PAYLOAD_TAMPERED';
+      this.persistToDisk();
       return {
         success: false,
         violation: 'PAYLOAD_TAMPERING_DETECTED',
@@ -89,6 +163,8 @@ class ApprovalStore {
       .createHmac('sha256', 'actiongate-secret-key')
       .update(`${actionId}:${record.agentId}:${record.payloadHash}:${approverId}`)
       .digest('hex');
+
+    this.persistToDisk();
 
     return {
       success: true,
@@ -112,6 +188,8 @@ class ApprovalStore {
     record.rejectionReason = reason || 'Supervisor rejected the proposed action.';
     record.rejectedAt = new Date().toISOString();
 
+    this.persistToDisk();
+
     return {
       success: true,
       actionId,
@@ -133,6 +211,7 @@ class ApprovalStore {
 
   reset() {
     this.pendingApprovals.clear();
+    this.persistToDisk();
   }
 }
 

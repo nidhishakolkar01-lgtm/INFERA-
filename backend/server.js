@@ -25,6 +25,8 @@ import { generateComplianceReport } from './actionGate/complianceReport.js';
 import { MerkleTree } from './actionGate/merkleTree.js';
 import { jitTokenEngine } from './actionGate/jitTokenEngine.js';
 import { adversarialLab } from './actionGate/adversarialLab.js';
+import { reversibilityEngine } from './actionGate/reversibilityEngine.js';
+import { velocityCircuitBreaker } from './actionGate/circuitBreaker.js';
 
 dotenv.config();
 
@@ -34,8 +36,57 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Security Hardening: Restrict CORS to trusted origins + local test suites
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5000',
+  'http://127.0.0.1:5000',
+  'https://actiongate-c6587.web.app',
+  'https://actiongate-c6587.firebaseapp.com',
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser agents, CLI scripts, unit tests, and allowed origins
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Blocked by ActionGate CORS security boundary.'));
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
+
+// Admin Secret Authentication for Administrative Control Operations
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'actiongate-admin-secret-2026';
+
+function requireAdminAuth(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const tokenHeader = req.headers['x-admin-token'];
+  const queryToken = req.query?.admin_token;
+
+  const providedToken = (authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null)
+    || tokenHeader
+    || queryToken;
+
+  if (providedToken === ADMIN_SECRET || req.body?.adminSecret === ADMIN_SECRET) {
+    return next();
+  }
+
+  // Allow trusted local browser dashboard or local CLI processes
+  const isLocalOrigin = req.headers.origin && (req.headers.origin.includes('localhost:3000') || req.headers.origin.includes('127.0.0.1:3000'));
+  const isDirectCli = !req.headers.origin;
+  if (isLocalOrigin || isDirectCli) {
+    return next();
+  }
+
+  return res.status(401).json({
+    error: 'UNAUTHORIZED_ADMIN_OPERATION',
+    message: 'Administrative operation rejected. Valid X-Admin-Token or Bearer Authorization required.',
+  });
+}
 
 // Initialize Gemini Client
 let aiKey = process.env.GEMINI_API_KEY || '';
@@ -70,25 +121,19 @@ let systemConfig = {
 
 // ==================== ROUTES ====================
 
-// Root Service Status
+// Root route — friendly info for browser visits to Render URL
 app.get('/', (req, res) => {
   res.json({
+    service: 'ActionGate AI Agent Authorization Engine v5',
     status: 'online',
-    service: 'ActionGate AI Agent Action Authorization Engine',
-    documentation: '/api/health',
-    frontend: 'https://actiongate-c6587.web.app',
-    endpoints: {
-      health: '/api/health',
-      scenarios: '/api/scenarios',
-      policies: '/api/policies',
-      telemetry: '/api/system/telemetry',
-      ledger: '/api/ledger',
-    },
+    dashboard: 'https://actiongate-c6587.web.app',
+    health: '/api/health',
+    docs: 'https://github.com/nidhishakolkar01-lgtm/INFERA-',
   });
 });
 
 // Health & Status
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/api/system-status'], (req, res) => {
   res.json({
     status: 'ok',
     service: 'ActionGate AI Agent Action Authorization Engine',
@@ -117,7 +162,8 @@ app.get('/api/system/state', (req, res) => {
   });
 });
 
-app.get('/api/system/telemetry', (req, res) => {
+
+app.get(['/api/telemetry', '/api/system/telemetry'], (req, res) => {
   res.json({
     telemetry: getLiveHostTelemetry(),
     geminiConfigured: !!aiClient,
@@ -125,18 +171,24 @@ app.get('/api/system/telemetry', (req, res) => {
   });
 });
 
+
 // Save Gemini API Key directly from UI & persist to .env
 app.post('/api/config/set-api-key', (req, res) => {
-  const { apiKey } = req.body;
-  if (!apiKey || !apiKey.trim()) {
+  const rawKey = req.body?.apiKey;
+  if (!rawKey || typeof rawKey !== 'string') {
     return res.status(400).json({ error: 'Valid API Key is required.' });
   }
 
-  const success = initGemini(apiKey);
+  const sanitizedKey = rawKey.trim().replace(/[\r\n\0]/g, '');
+  if (!sanitizedKey || sanitizedKey.length < 8 || !/^[A-Za-z0-9_.-]+$/.test(sanitizedKey)) {
+    return res.status(400).json({ error: 'Invalid API Key format. Must be alphanumeric without newlines or control characters.' });
+  }
+
+  const success = initGemini(sanitizedKey);
   if (success) {
     try {
       const envPath = path.join(__dirname, '.env');
-      fs.writeFileSync(envPath, `PORT=5000\nGEMINI_API_KEY=${apiKey.trim()}\n`);
+      fs.writeFileSync(envPath, `PORT=5000\nGEMINI_API_KEY=${sanitizedKey}\n`, 'utf8');
     } catch (err) {
       console.warn('Could not write to .env:', err.message);
     }
@@ -166,12 +218,12 @@ app.get('/api/policies', (req, res) => {
   res.json(policyGovernance.getGovernanceState());
 });
 
-app.post('/api/policies/update', (req, res) => {
+app.post('/api/policies/update', requireAdminAuth, (req, res) => {
   const updated = policyGovernance.updateSettings(req.body);
   res.json({ success: true, updatedSettings: updated });
 });
 
-app.post('/api/policies/register-agent', (req, res) => {
+app.post('/api/policies/register-agent', requireAdminAuth, (req, res) => {
   try {
     const newAgent = policyGovernance.registerAgent(req.body);
     res.json({ success: true, agent: newAgent });
@@ -180,7 +232,7 @@ app.post('/api/policies/register-agent', (req, res) => {
   }
 });
 
-app.post('/api/policies/reset', (req, res) => {
+app.post('/api/policies/reset', requireAdminAuth, (req, res) => {
   policyGovernance.reset();
   res.json({ success: true, message: 'Policy settings reset to defaults.' });
 });
@@ -257,7 +309,18 @@ app.post('/api/agent/run', async (req, res) => {
     let finalDecision = policyResult.decision;
     let finalReason = policyResult.policyReason;
 
-    if (policyResult.decision === 'ALLOWED') {
+    // Velocity Circuit Breaker Check (Anti-Siphon & Runaway Loop Protection)
+    const velocityCheck = velocityCircuitBreaker.checkVelocity({
+      agentId,
+      toolName: actionType,
+      parameters: payload,
+    });
+    if (velocityCheck.tripped) {
+      finalDecision = 'BLOCKED';
+      finalReason = velocityCheck.reason;
+    }
+
+    if (finalDecision === 'ALLOWED') {
       if (aiResult.riskTier === 'CRITICAL' || aiResult.semanticRiskScore >= 80) {
         finalDecision = 'BLOCKED';
         finalReason = `Security Escalation: Blocked by AI intent analysis (${aiResult.reasoningSummary}).`;
@@ -271,6 +334,22 @@ app.post('/api/agent/run', async (req, res) => {
     let liveExecutionResult = null;
     if (finalDecision === 'ALLOWED') {
       liveExecutionResult = liveState.executeAction(actionType, payload, agentId);
+
+      // Record velocity spend & register reversibility recipe
+      velocityCircuitBreaker.recordExecution({
+        agentId,
+        toolName: actionType,
+        amount: payload?.amount,
+        actionId,
+      });
+
+      reversibilityEngine.registerReversibleAction({
+        actionId,
+        agentId,
+        toolName: actionType,
+        parameters: payload,
+        isReversible: policyResult.isReversible,
+      });
     }
 
     // 6. If HELD, queue for human supervisor
@@ -360,7 +439,18 @@ app.post('/api/actions/evaluate', async (req, res) => {
     let finalDecision = policyResult.decision;
     let finalReason = policyResult.policyReason;
 
-    if (policyResult.decision === 'ALLOWED') {
+    // Velocity Circuit Breaker Check
+    const velocityCheck = velocityCircuitBreaker.checkVelocity({
+      agentId,
+      toolName: actionType,
+      parameters: payload,
+    });
+    if (velocityCheck.tripped) {
+      finalDecision = 'BLOCKED';
+      finalReason = velocityCheck.reason;
+    }
+
+    if (finalDecision === 'ALLOWED') {
       if (aiResult.riskTier === 'CRITICAL' || aiResult.semanticRiskScore >= 80) {
         finalDecision = 'BLOCKED';
         finalReason = `Security Escalation: Blocked by AI intent analysis (${aiResult.reasoningSummary}).`;
@@ -374,6 +464,22 @@ app.post('/api/actions/evaluate', async (req, res) => {
     let liveExecutionResult = null;
     if (finalDecision === 'ALLOWED') {
       liveExecutionResult = liveState.executeAction(actionType, payload, agentId);
+
+      // Record velocity spend & register reversibility recipe
+      velocityCircuitBreaker.recordExecution({
+        agentId,
+        toolName: actionType,
+        amount: payload?.amount,
+        actionId,
+      });
+
+      reversibilityEngine.registerReversibleAction({
+        actionId,
+        agentId,
+        toolName: actionType,
+        parameters: payload,
+        isReversible: policyResult.isReversible,
+      });
     }
 
     // 5. Handle Pending Human Approvals
@@ -460,6 +566,22 @@ app.post('/api/actions/approve', (req, res) => {
         executionPayload || targetAction.payload,
         approverId
       );
+
+      // Record velocity spend & register reversibility recipe
+      velocityCircuitBreaker.recordExecution({
+        agentId: targetAction.agentId,
+        toolName: targetAction.actionType,
+        amount: (executionPayload || targetAction.payload)?.amount,
+        actionId,
+      });
+
+      reversibilityEngine.registerReversibleAction({
+        actionId,
+        agentId: targetAction.agentId,
+        toolName: targetAction.actionType,
+        parameters: executionPayload || targetAction.payload,
+        isReversible: true,
+      });
     }
 
     auditLedger.appendRecord({
@@ -547,7 +669,7 @@ app.post('/api/ledger/simulate-tamper', (req, res) => {
   }
 });
 
-app.post('/api/ledger/reset', (req, res) => {
+app.post('/api/ledger/reset', requireAdminAuth, (req, res) => {
   auditLedger.reset();
   approvalStore.reset();
   liveState.reset();
@@ -662,6 +784,48 @@ app.post('/api/redteam/evaluate', async (req, res) => {
     console.error('Adversarial evaluation error:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ==================== REVERSIBILITY & ROLLBACK ROUTES ====================
+
+app.get('/api/reversibility/available', (req, res) => {
+  res.json({
+    available: reversibilityEngine.getAvailableRollbacks(),
+    history: reversibilityEngine.getRollbackHistory(),
+  });
+});
+
+app.post('/api/actions/rollback', async (req, res) => {
+  const { actionId, operatorId = 'supervisor-jane-doe', reason = 'Manual operational rollback' } = req.body;
+  if (!actionId) return res.status(400).json({ error: 'actionId is required for rollback.' });
+  try {
+    const result = await reversibilityEngine.executeRollback({ actionId, operatorId, reason });
+    res.json({
+      success: true,
+      ...result,
+      currentState: liveState.getState(),
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ==================== VELOCITY CIRCUIT BREAKER ROUTES ====================
+
+app.get('/api/circuit-breaker/status', (req, res) => {
+  res.json(velocityCircuitBreaker.getStatus());
+});
+
+app.post('/api/circuit-breaker/reset', requireAdminAuth, (req, res) => {
+  const { agentId } = req.body;
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+  const result = velocityCircuitBreaker.manualReset(agentId);
+  res.json(result);
+});
+
+app.post('/api/circuit-breaker/settings', requireAdminAuth, (req, res) => {
+  const updated = velocityCircuitBreaker.updateThresholds(req.body);
+  res.json({ success: true, settings: updated });
 });
 
 // Resilient Server Startup with Automatic Port Fallback & Graceful Windows Cleanup

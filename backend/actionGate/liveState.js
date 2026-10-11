@@ -1,20 +1,79 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { getLiveHostTelemetry } from './liveHostMetrics.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DATA_DIR = path.join(__dirname, '../data');
+const STATE_FILE = path.join(DATA_DIR, 'live_state.json');
 
 /**
  * ActionGate Live System State
- * Real in-memory operational state that mutates ONLY when live actions are executed.
- * Zero fictional or synthetic pre-seeded records.
+ * Real operational state that mutates ONLY when live actions are executed.
+ * Persisted durably to disk to survive process restarts without data loss.
  */
 
 class LiveSystemState {
   constructor() {
-    this.reset();
-  }
-
-  reset() {
     this.treasuryBalance = 100000.00; // Baseline treasury balance
     this.executionJournal = []; // Clean journal: starts empty, appends real executions
     this.lastActionExecuted = null;
+    this.ensureDataDir();
+    this.loadFromDisk();
+  }
+
+  ensureDataDir() {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+    } catch (err) {
+      console.warn('Could not ensure data directory for live state:', err.message);
+    }
+  }
+
+  loadFromDisk() {
+    try {
+      if (fs.existsSync(STATE_FILE)) {
+        const raw = fs.readFileSync(STATE_FILE, 'utf8');
+        const data = JSON.parse(raw);
+        if (typeof data.treasuryBalance === 'number') {
+          this.treasuryBalance = data.treasuryBalance;
+        }
+        if (Array.isArray(data.executionJournal)) {
+          this.executionJournal = data.executionJournal;
+        }
+        if (data.lastActionExecuted) {
+          this.lastActionExecuted = data.lastActionExecuted;
+        }
+      } else {
+        this.persistToDisk();
+      }
+    } catch (err) {
+      console.warn('Failed to load live state from disk, using baseline:', err.message);
+    }
+  }
+
+  persistToDisk() {
+    try {
+      const data = {
+        treasuryBalance: this.treasuryBalance,
+        executionJournal: this.executionJournal.slice(0, 500), // Retain latest 500 executions
+        lastActionExecuted: this.lastActionExecuted,
+        updatedAt: new Date().toISOString(),
+      };
+      fs.writeFileSync(STATE_FILE, JSON.stringify(data, null, 2), 'utf8');
+    } catch (err) {
+      console.warn('Failed to persist live state to disk:', err.message);
+    }
+  }
+
+  reset() {
+    this.treasuryBalance = 100000.00;
+    this.executionJournal = [];
+    this.lastActionExecuted = null;
+    this.persistToDisk();
   }
 
   // Execute an action on live state
@@ -92,6 +151,7 @@ class LiveSystemState {
 
     this.executionJournal.unshift(journalEntry);
     this.lastActionExecuted = journalEntry;
+    this.persistToDisk();
     return journalEntry;
   }
 

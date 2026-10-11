@@ -33,22 +33,23 @@ import {
   Download,
   Copy,
   PlusCircle,
+  RotateCcw,
 } from 'lucide-react';
 
-const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
-  ? 'https://infera-hdk9.onrender.com'
-  : '';
+// ── Production API routing ──────────────────────────────────────────────────
+// When deployed to Firebase Hosting, rewrite /api/* calls to the Render backend.
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? ''  // dev: Vite proxy handles /api/* → localhost:5000
+  : 'https://infera-hdk9.onrender.com';  // prod: Render backend
 
-if (typeof window !== 'undefined' && !window.__actiongate_fetch_patched) {
-  window.__actiongate_fetch_patched = true;
-  const originalFetch = window.fetch;
-  window.fetch = function (url, options) {
-    if (typeof url === 'string' && url.startsWith('/api')) {
-      url = `${API_BASE}${url}`;
-    }
-    return originalFetch.call(this, url, options);
-  };
-}
+const _origFetch = window.fetch.bind(window);
+window.fetch = (input, init) => {
+  if (typeof input === 'string' && input.startsWith('/api/')) {
+    input = API_BASE + input;
+  }
+  return _origFetch(input, init);
+};
+// ───────────────────────────────────────────────────────────────────────────
 
 export default function App() {
   // Navigation / Tabs: 'agent' | 'chaos' | 'policies' | 'telemetry' | 'approvals' | 'ledger' | 'manual'
@@ -138,6 +139,12 @@ export default function App() {
   const [jitReplaySimResult, setJitReplaySimResult] = useState(null);
   const [isSimulatingReplay, setIsSimulatingReplay] = useState(false);
 
+  // Circuit Breaker & Reversibility Rollback State
+  const [circuitBreakerData, setCircuitBreakerData] = useState(null);
+  const [availableRollbacks, setAvailableRollbacks] = useState([]);
+  const [rollbackSuccessMsg, setRollbackSuccessMsg] = useState('');
+  const [isRollingBack, setIsRollingBack] = useState(false);
+
   // Fetch all live data
   const refreshAllData = async () => {
     try {
@@ -170,6 +177,8 @@ export default function App() {
         }
       }).catch(() => {});
       fetch('/api/jit/metrics').then((r) => r.json()).then((d) => setJitMetrics(d || null)).catch(() => {});
+      fetch('/api/circuit-breaker/status').then((r) => r.json()).then((d) => setCircuitBreakerData(d || null)).catch(() => {});
+      fetch('/api/reversibility/available').then((r) => r.json()).then((d) => setAvailableRollbacks(d.available || [])).catch(() => {});
     } catch (err) {
       console.error('Fetch error:', err);
     }
@@ -606,6 +615,51 @@ export default function App() {
       alert('Replay simulation error: ' + err.message);
     } finally {
       setIsSimulatingReplay(false);
+    }
+  };
+
+  // 1-Click Cryptographic Rollback of Reversible Action
+  const handleRollbackAction = async (actionId) => {
+    setIsRollingBack(true);
+    try {
+      const res = await fetch('/api/actions/rollback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionId,
+          operatorId: approverId,
+          reason: 'Manual 1-click compensation rollback by supervisor'
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRollbackSuccessMsg(`✅ Action ${actionId} successfully rolled back! Compensating block #${data.ledgerBlockIndex} appended.`);
+        setTimeout(() => setRollbackSuccessMsg(''), 5000);
+        refreshAllData();
+      } else {
+        alert('Rollback failed: ' + data.error);
+      }
+    } catch (err) {
+      alert('Rollback error: ' + err.message);
+    } finally {
+      setIsRollingBack(false);
+    }
+  };
+
+  // Reset Velocity Circuit Breaker for an Agent
+  const handleResetCircuitBreaker = async (agentId) => {
+    try {
+      const res = await fetch('/api/circuit-breaker/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        refreshAllData();
+      }
+    } catch (err) {
+      alert('Breaker reset error: ' + err.message);
     }
   };
 
@@ -2529,6 +2583,257 @@ export default function App() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Section 3: Anti-Siphon Velocity Circuit Breaker */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-amber-400" />
+                    Anti-Siphon Velocity Circuit Breaker &amp; Rate Governor
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Real-time sliding window telemetry enforcing financial spend limits ($5,000/60s) and critical action velocity (5 ops/60s). Trips to open state instantly if an agent attempts high-frequency draining.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border flex items-center gap-1.5 ${
+                    circuitBreakerData?.summary?.trippedAgentsCount > 0
+                      ? 'bg-rose-950/60 border-rose-500/60 text-rose-300 animate-pulse'
+                      : 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300'
+                  }`}>
+                    {circuitBreakerData?.summary?.trippedAgentsCount > 0 ? (
+                      <>
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                        CIRCUIT TRIPPED ({circuitBreakerData.summary.trippedAgentsCount} AGENT)
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        STATUS: CLOSED (ARMED)
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Thresholds Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                  <span className="text-slate-500 block mb-1">Sliding Time Window:</span>
+                  <span className="font-mono text-base font-bold text-slate-200">
+                    {circuitBreakerData?.config?.rollingWindowSeconds || 60}s Rolling
+                  </span>
+                </div>
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                  <span className="text-slate-500 block mb-1">Max Spend Per Window:</span>
+                  <span className="font-mono text-base font-bold text-emerald-400">
+                    ${(circuitBreakerData?.config?.maxRollingSpend || 5000).toLocaleString()}
+                  </span>
+                </div>
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                  <span className="text-slate-500 block mb-1">Max Critical Operations:</span>
+                  <span className="font-mono text-base font-bold text-cyan-400">
+                    {circuitBreakerData?.config?.maxCriticalActionsPerWindow || 5} ops/min
+                  </span>
+                </div>
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                  <span className="text-slate-500 block mb-1">Penalty Cooldown:</span>
+                  <span className="font-mono text-base font-bold text-amber-400">
+                    {circuitBreakerData?.config?.cooldownSeconds || 120}s Lockdown
+                  </span>
+                </div>
+              </div>
+
+              {/* Tracked Agents Breakdown */}
+              <div className="space-y-3">
+                <div className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>Live Monitored Agent Velocity State:</span>
+                  <span className="text-slate-500 font-mono text-[11px]">
+                    Tracked Agents: {circuitBreakerData?.agents?.length || 0}
+                  </span>
+                </div>
+
+                {circuitBreakerData?.agents && circuitBreakerData.agents.length > 0 ? (
+                  <div className="space-y-2">
+                    {circuitBreakerData.agents.map((ag) => (
+                      <div
+                        key={ag.agentId}
+                        className={`p-4 rounded-xl border text-xs font-mono transition ${
+                          ag.isTripped
+                            ? 'bg-rose-950/30 border-rose-800/60'
+                            : ag.state === 'HALF_OPEN'
+                            ? 'bg-amber-950/30 border-amber-800/60'
+                            : 'bg-slate-950/80 border-slate-800'
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-200 text-sm">{ag.agentId}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                ag.isTripped
+                                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                                  : ag.state === 'HALF_OPEN'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              }`}>
+                                {ag.state}
+                              </span>
+                            </div>
+                            {ag.tripReason && (
+                              <div className="text-rose-400 text-[11px] font-sans flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                {ag.tripReason}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <span className="text-slate-500 block text-[10px]">Rolling Spend:</span>
+                              <span className={`font-bold ${ag.rollingSpend >= ag.spendCap ? 'text-rose-400' : 'text-emerald-300'}`}>
+                                ${ag.rollingSpend.toLocaleString()} / ${ag.spendCap.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-slate-500 block text-[10px]">Critical Ops:</span>
+                              <span className={`font-bold ${ag.criticalCount >= ag.criticalCap ? 'text-rose-400' : 'text-cyan-300'}`}>
+                                {ag.criticalCount} / {ag.criticalCap}
+                              </span>
+                            </div>
+                            {ag.isTripped && (
+                              <button
+                                onClick={() => handleResetCircuitBreaker(ag.agentId)}
+                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-sans font-bold flex items-center gap-1.5 shadow-md shadow-rose-950/50 transition shrink-0"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                Reset Breaker
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Spend Bar */}
+                        <div className="mt-3 pt-2 border-t border-slate-800/80">
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                            <span>Siphon Threshold Usage:</span>
+                            <span>{Math.min(100, Math.round((ag.rollingSpend / ag.spendCap) * 100))}%</span>
+                          </div>
+                          <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${
+                                ag.isTripped
+                                  ? 'bg-rose-500'
+                                  : ag.rollingSpend > ag.spendCap * 0.7
+                                  ? 'bg-amber-400'
+                                  : 'bg-emerald-500'
+                              }`}
+                              style={{ width: `${Math.min(100, Math.round((ag.rollingSpend / ag.spendCap) * 100))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl text-center text-slate-500 text-xs">
+                    No active agent traffic detected in the current rolling 60-second window. System idling safely at 0 velocity.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Section 4: Reversibility Rollback Engine */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <RotateCcw className="w-5 h-5 text-indigo-400" />
+                    Reversibility Rollback Engine (One-Click State Inversion)
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Every mutating agent operation registers a deterministic inverse compensation recipe prior to dispatch. If a breach or anomaly is discovered post-execution, human supervisors can execute an atomic 1-click rollback, generating a cryptographic inverse Merkle block.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-950/60 border border-indigo-500/60 text-indigo-300 flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-indigo-400" />
+                    RECIPES ACTIVE ({availableRollbacks.filter((r) => !r.rolledBack).length} UNROLLED)
+                  </span>
+                </div>
+              </div>
+
+              {rollbackSuccessMsg && (
+                <div className="p-3.5 bg-emerald-950/60 border border-emerald-500/60 rounded-xl text-emerald-200 text-xs flex items-center gap-2.5 font-mono animate-fadeIn">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{rollbackSuccessMsg}</span>
+                </div>
+              )}
+
+              {/* Rollback Queue Table */}
+              <div className="space-y-3">
+                <div className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>Reversible State Registry:</span>
+                  <span className="text-slate-500 font-mono text-[11px]">
+                    Total Registered: {availableRollbacks.length}
+                  </span>
+                </div>
+
+                {availableRollbacks.length > 0 ? (
+                  <div className="space-y-2">
+                    {availableRollbacks.map((rb) => (
+                      <div
+                        key={rb.actionId}
+                        className={`p-4 rounded-xl border text-xs font-mono transition flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                          rb.rolledBack
+                            ? 'bg-slate-950/40 border-slate-800/50 opacity-70'
+                            : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-200">{rb.actionId}</span>
+                            <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px]">
+                              {rb.tool}
+                            </span>
+                            <span className="text-slate-500 text-[11px]">by {rb.agentId}</span>
+                          </div>
+                          <div className="text-slate-400 text-[11px]">
+                            Params: {JSON.stringify(rb.params)}
+                          </div>
+                          <div className="text-slate-600 text-[10px]">
+                            Registered: {new Date(rb.registeredAt).toLocaleTimeString()}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          {rb.rolledBack ? (
+                            <span className="px-3 py-1 bg-slate-800/80 border border-slate-700 text-slate-400 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
+                              Rolled Back (Block #{rb.compensatingBlockIndex})
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleRollbackAction(rb.actionId)}
+                              disabled={isRollingBack}
+                              className="px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 disabled:opacity-50 text-white rounded-lg text-xs font-sans font-bold flex items-center gap-1.5 shadow-md shadow-indigo-950/40 transition"
+                            >
+                              <RotateCcw className={`w-3.5 h-3.5 ${isRollingBack ? 'animate-spin' : ''}`} />
+                              1-Click Rollback
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl text-center text-slate-500 text-xs">
+                    No reversible actions currently stored. Execute a state-mutating tool (e.g. TRANSFER_FUNDS or via the Drop-In SDK / Judge CLI) to generate live compensation recipes.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

@@ -1,0 +1,146 @@
+[
+  {
+    "actionId": "ACT-473538",
+    "agentId": "finance-agent-01",
+    "actionType": "transfer_funds",
+    "payload": {
+      "amount": 3500,
+      "recipient": "vendor_data_center_infra"
+    },
+    "payloadHash": "eb331b3c92c7f1d064d0591c9f5d8c1f2a7d7f3c6afd80c96a0aeb961534e0f4",
+    "heldReason": "Financial Threshold Triggered: Amount $3,500 exceeds active policy threshold of $1,000. Held for 4-eyes supervisor approval.",
+    "impactLevel": "HIGH",
+    "aiRiskScore": 15,
+    "decisionPath": "DETERMINISTIC_SAFE_FALLBACK",
+    "status": "PENDING_SUPERVISOR_APPROVAL",
+    "createdAt": "2026-10-11T12:41:14.069Z",
+    "approvedBy": null,
+    "approvedAt": null
+  },
+  {
+    "actionId": "ACT-474488",
+    "agentId": "finance-agent-01",
+    "actionType": "transfer_funds",
+    "payload": {
+      "amount": 1200,
+      "recipient": "legitimate_vendor"
+    },
+    "payloadHash": "0ad3ccd04c0c01b3bfc9d059c2f56c14e8f3372f1d58d587231c1fa30597b4b0",
+    "heldReason": "Financial Threshold Triggered: Amount $1,200 exceeds active policy threshold of $1,000. Held for 4-eyes supervisor approval.",
+    "impactLevel": "HIGH",
+    "aiRiskScore": 15,
+    "decisionPath": "DETERMINISTIC_SAFE_FALLBACK",
+    "status": "REVOKED_PAYLOAD_TAMPERED",
+    "createdAt": "2026-10-11T12:41:14.488Z",
+    "approvedBy": null,
+    "approvedAt": null
+  },
+  {
+    "actionId": "ACT-076514",
+    "agentId": "finance-agent-01",
+    "actionType": "transfer_funds",
+    "payload": {
+      "amount": 3500,
+      "recipient": "vendor_data_center_infra"
+    },
+    "payloadHash": "eb331b3c92c7f1d064d0591c9f5d8c1f2a7d7f3c6afd80c96a0aeb961534e0f4",
+    "heldReason": "Financial Threshold Triggered: Amount $3,500 exceeds active policy threshold of $1,000. Held for 4-eyes supervisor approval.",
+    "impactLevel": "HIGH",
+    "aiRiskScore": 15,
+    "decisionPath": "DETERMINISTIC_SAFE_FALLBACK",
+    "status": "PENDING_SUPERVISOR_APPROVAL",
+    "createdAt": "2026-10-11T12:51:17.130Z",
+    "approvedBy": null,
+    "approvedAt": null
+  },
+  {
+    "actionId": "ACT-077571",
+    "agentId": "finance-agent-01",
+    "actionType": "transfer_funds",
+    "payload": {
+      "amount": 1200,
+      "recipient": "legitimate_vendor"
+    },
+    "payloadHash": "0ad3ccd04c0c01b3bfc9d059c2f56c14e8f3372f1d58d587231c1fa30597b4b0",
+    "heldReason": "Financial Threshold Triggered: Amount $1,200 exceeds active policy threshold of $1,000. Held for 4-eyes supervisor approval.",
+    "impactLevel": "HIGH",
+    "aiRiskScore": 15,
+    "decisionPath": "DETERMINISTIC_SAFE_FALLBACK",
+    "status": "REVOKED_PAYLOAD_TAMPERED",
+    "createdAt": "2026-10-11T12:51:17.571Z",
+    "approvedBy": null,
+    "approvedAt": null
+  },
+  {
+    "actionId": "ACT-102308",
+    "agentId": "finance-agent-01",
+    "actionType": "transfer_funds",
+    "payload": {
+      "recipient": "vendor_escrow",
+      "amount": 4500
+    },
+    "payloadHash": "089a0745dd6606d94ba8c2e4e8dbfaa7e990e3724aa61612e052844e1e5461de",
+    "heldReason": "Financial Threshold Triggered: Amount $4,500 exceeds active policy threshold of $1,000. Held for 4-eyes supervisor approval.",
+    "impactLevel": "HIGH",
+    "aiRiskScore": 15,
+    "decisionPath": "DETERMINISTIC_SAFE_FALLBACK",
+    "status": "PENDING_SUPERVISOR_APPROVAL",
+    "createdAt": "2026-10-11T12:51:42.309Z",
+    "approvedBy": null,
+    "approvedAt": null
+  },
+  {
+    "actionId": "ACT-572530",
+    "agentId": "finance-agent-01",
+    "actionType": "transfer_funds",
+    "payload": {
+      "amount": 3500,
+      "recipient": "vendor_data_center_infra"
+    },
+    "payloadHash": "eb331b3c92c7f1d064d0591c9f5d8c1f2a7d7f3c6afd80c96a0aeb961534e0f4",
+    "heldReason": "Financial Threshold Triggered: Amount $3,500 exceeds active policy threshold of $1,000. Held for 4-eyes supervisor approval.",
+    "impactLevel": "HIGH",
+    "aiRiskScore": 15,
+    "decisionPath": "DETERMINISTIC_SAFE_FALLBACK",
+    "status": "PENDING_SUPERVISOR_APPROVAL",
+    "createdAt": "2026-10-11T13:32:52.532Z",
+    "approvedBy": null,
+    "approvedAt": null
+  },
+  {
+    "actionId": "ACT-572952",
+    "agentId": "finance-agent-01",
+    "actionType": "transfer_funds",
+    "payload": {
+      "amount": 1200,
+      "recipient": "legitimate_vendor"
+    },
+    "payloadHash": "0ad3ccd04c0c01b3bfc9d059c2f56c14e8f3372f1d58d587231c1fa30597b4b0",
+    "heldReason": "Financial Threshold Triggered: Amount $1,200 exceeds active policy threshold of $1,000. Held for 4-eyes supervisor approval.",
+    "impactLevel": "HIGH",
+    "aiRiskScore": 15,
+    "decisionPath": "DETERMINISTIC_SAFE_FALLBACK",
+    "status": "REVOKED_PAYLOAD_TAMPERED",
+    "createdAt": "2026-10-11T13:32:52.952Z",
+    "approvedBy": null,
+    "approvedAt": null
+  },
+  {
+    "actionId": "ACT-582085",
+    "agentId": "finance-agent-01",
+    "actionType": "transfer_funds",
+    "payload": {
+      "recipient": "vendor_escrow",
+      "amount": 4500
+    },
+    "payloadHash": "089a0745dd6606d94ba8c2e4e8dbfaa7e990e3724aa61612e052844e1e5461de",
+    "heldReason": "Financial Threshold Triggered: Amount $4,500 exceeds active policy threshold of $1,000. Held for 4-eyes supervisor approval.",
+    "impactLevel": "HIGH",
+    "aiRiskScore": 15,
+    "decisionPath": "DETERMINISTIC_SAFE_FALLBACK",
+    "status": "PENDING_SUPERVISOR_APPROVAL",
+    "createdAt": "2026-10-11T13:33:02.085Z",
+    "approvedBy": null,
+    "approvedAt": null
+  }
+]
