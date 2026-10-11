@@ -664,12 +664,19 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative selection:bg-indigo-500 selection:text-white">
+      {/* Dynamic Ambient Background Glows */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-cyan-600/15 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
+      </div>
+
       {/* Top Navbar */}
-      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-6 py-3.5">
+      <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-6 py-3.5 shadow-lg shadow-black/20">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-xl shadow-lg shadow-indigo-500/20">
+            <div className="p-2.5 bg-gradient-to-br from-indigo-500 via-indigo-600 to-cyan-500 rounded-xl shadow-lg shadow-indigo-500/25 transition-transform duration-300 hover:scale-105 hover:rotate-3 cursor-pointer">
               <Shield className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -677,7 +684,7 @@ export default function App() {
                 <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-indigo-300 via-cyan-300 to-white bg-clip-text text-transparent">
                   ACTIONGATE
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-mono">
+                <span className="text-xs px-2 py-0.5 rounded bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-mono shadow-sm">
                   ENTERPRISE C-01
                 </span>
               </div>
@@ -688,8 +695,8 @@ export default function App() {
           {/* Real-time System Indicators */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
             {/* Live Treasury Balance */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-600/40 text-emerald-300 font-mono">
-              <DollarSign className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-600/40 text-emerald-300 font-mono transition-transform hover:scale-105 duration-200">
+              <DollarSign className="w-3.5 h-3.5 animate-bounce" />
               <span>Treasury:</span>
               <span className="font-bold">
                 ${(liveState.treasuryBalance || 100000).toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -698,7 +705,7 @@ export default function App() {
 
             {/* Real Host RAM Indicator */}
             {hostTelemetry && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 font-mono">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 font-mono transition-all hover:border-cyan-500/50">
                 <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Heap: {hostTelemetry.memory?.heapUsedMb} MB</span>
               </div>
@@ -707,7 +714,7 @@ export default function App() {
             {/* SOC-2 Certificate Button */}
             <button
               onClick={handleOpenCompliance}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-950/40 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/50 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-950/40 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/50 hover:border-indigo-400/80 hover:shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition-all duration-200"
               title="Generate cryptographic compliance certificate"
             >
               <Award className="w-3.5 h-3.5 text-amber-400" />
@@ -717,9 +724,9 @@ export default function App() {
             {/* Gemini API Key Button */}
             <button
               onClick={() => setShowKeyModal(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border active:scale-95 transition-all duration-200 ${
                 systemStatus?.geminiConfigured
-                  ? 'bg-emerald-950/40 border-emerald-600/40 text-emerald-300 hover:bg-emerald-900/50'
+                  ? 'bg-emerald-950/40 border-emerald-600/40 text-emerald-300 hover:bg-emerald-900/50 hover:border-emerald-500'
                   : 'bg-amber-950/50 border-amber-600/50 text-amber-300 hover:bg-amber-900/60 animate-pulse'
               }`}
             >
@@ -730,10 +737,10 @@ export default function App() {
             {/* Offline Fallback Toggle */}
             <button
               onClick={handleToggleAi}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border active:scale-95 transition-all duration-200 ${
                 simulateAiOffline
-                  ? 'bg-amber-950/40 border-amber-600/40 text-amber-300'
-                  : 'bg-indigo-950/40 border-indigo-600/40 text-indigo-300'
+                  ? 'bg-amber-950/40 border-amber-600/40 text-amber-300 hover:bg-amber-900/50'
+                  : 'bg-indigo-950/40 border-indigo-600/40 text-indigo-300 hover:bg-indigo-900/50'
               }`}
               title="Toggle live Gemini vs Safe Local Fallback mode"
             >
@@ -742,7 +749,7 @@ export default function App() {
             </button>
 
             {/* Pending Approvals Badge */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 transition-all hover:border-amber-500/40">
               <Clock className="w-3.5 h-3.5 text-amber-400" />
               <span className="text-slate-400">Held:</span>
               <span className="text-amber-400 font-bold">{pendingApprovals.length}</span>
@@ -753,25 +760,25 @@ export default function App() {
 
       {/* Main Tab Navigation */}
       <div className="max-w-7xl mx-auto w-full px-6 pt-5">
-        <div className="flex border-b border-slate-800 gap-6 text-sm overflow-x-auto">
+        <div className="flex border-b border-slate-800/80 gap-2 text-sm overflow-x-auto pb-2 scrollbar-none">
           <button
             onClick={() => setActiveTab('agent')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
               activeTab === 'agent'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 shadow-lg shadow-indigo-500/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
             }`}
           >
-            <Bot className="w-4 h-4" />
+            <Bot className="w-4 h-4 text-indigo-400" />
             Agent Mission Runner
           </button>
 
           <button
             onClick={() => setActiveTab('chaos')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
               activeTab === 'chaos'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-lg shadow-amber-500/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
             }`}
           >
             <Zap className="w-4 h-4 text-amber-400" />
@@ -780,10 +787,10 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('policies')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
               activeTab === 'policies'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-lg shadow-cyan-500/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
             }`}
           >
             <Sliders className="w-4 h-4 text-cyan-400" />
@@ -792,10 +799,10 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('telemetry')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
               activeTab === 'telemetry'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 shadow-lg shadow-indigo-500/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
             }`}
           >
             <Server className="w-4 h-4" />
@@ -804,16 +811,16 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('approvals')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
               activeTab === 'approvals'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-lg shadow-amber-500/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
             }`}
           >
-            <UserCheck className="w-4 h-4" />
+            <UserCheck className="w-4 h-4 text-amber-400" />
             Human Approvals
             {pendingApprovals.length > 0 && (
-              <span className="px-1.5 py-0.5 text-xs bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30">
+              <span className="px-1.5 py-0.5 text-xs bg-amber-500 text-slate-950 font-black rounded-full shadow-sm animate-pulse">
                 {pendingApprovals.length}
               </span>
             )}
@@ -821,22 +828,22 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('ledger')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
               activeTab === 'ledger'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 shadow-lg shadow-indigo-500/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
             }`}
           >
-            <Fingerprint className="w-4 h-4" />
+            <Fingerprint className="w-4 h-4 text-indigo-400" />
             Cryptographic Audit Ledger ({ledgerChain.length})
           </button>
 
           <button
             onClick={() => setActiveTab('redteam')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
               activeTab === 'redteam'
-                ? 'border-indigo-500 text-rose-400 font-bold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-lg shadow-rose-500/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
             }`}
           >
             <Flame className="w-4 h-4 text-rose-400" />
@@ -848,10 +855,10 @@ export default function App() {
               setActiveTab('merkle');
               if (selectedLeafIndex === 0) handleFetchLeafProof(0);
             }}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
               activeTab === 'merkle'
-                ? 'border-indigo-500 text-emerald-400 font-bold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
             }`}
           >
             <Layers className="w-4 h-4 text-emerald-400" />
@@ -860,10 +867,10 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('manual')}
-            className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap transition-all duration-200 ${
               activeTab === 'manual'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 shadow-lg shadow-indigo-500/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
             }`}
           >
             <Terminal className="w-4 h-4" />
@@ -873,7 +880,7 @@ export default function App() {
       </div>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto w-full px-6 py-6 flex-1">
+      <main className="max-w-7xl mx-auto w-full px-6 py-6 flex-1 animate-tab-content">
         {/* ================= TAB 1: AUTONOMOUS AGENT MISSION RUNNER ================= */}
         {activeTab === 'agent' && (
           <div className="space-y-6">
@@ -2841,8 +2848,8 @@ export default function App() {
 
       {/* COMPLIANCE CERTIFICATE MODAL */}
       {showCertModal && complianceReport && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto font-sans">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all">
+          <div className="bg-slate-900/95 border border-indigo-500/30 rounded-2xl max-w-2xl w-full p-6 shadow-2xl shadow-indigo-500/10 max-h-[90vh] overflow-y-auto font-sans animate-modal-pop">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
               <div className="flex items-center gap-2.5">
                 <Award className="w-6 h-6 text-amber-400" />
@@ -2857,7 +2864,7 @@ export default function App() {
               </div>
               <button
                 onClick={() => setShowCertModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
               >
                 ✕
               </button>
@@ -2946,8 +2953,8 @@ export default function App() {
 
       {/* GEMINI API KEY MODAL */}
       {showKeyModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all">
+          <div className="bg-slate-900/95 border border-indigo-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl shadow-indigo-500/10 animate-modal-pop">
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
               <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                 <Key className="w-4 h-4 text-indigo-400" />
@@ -2955,7 +2962,7 @@ export default function App() {
               </h3>
               <button
                 onClick={() => setShowKeyModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
               >
                 ✕
               </button>
