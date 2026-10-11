@@ -70,6 +70,23 @@ let systemConfig = {
 
 // ==================== ROUTES ====================
 
+// Root Service Status
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    service: 'ActionGate AI Agent Action Authorization Engine',
+    documentation: '/api/health',
+    frontend: 'https://actiongate-c6587.web.app',
+    endpoints: {
+      health: '/api/health',
+      scenarios: '/api/scenarios',
+      policies: '/api/policies',
+      telemetry: '/api/system/telemetry',
+      ledger: '/api/ledger',
+    },
+  });
+});
+
 // Health & Status
 app.get('/api/health', (req, res) => {
   res.json({

@@ -35,6 +35,21 @@ import {
   PlusCircle,
 } from 'lucide-react';
 
+const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+  ? 'https://infera-hdk9.onrender.com'
+  : '';
+
+if (typeof window !== 'undefined' && !window.__actiongate_fetch_patched) {
+  window.__actiongate_fetch_patched = true;
+  const originalFetch = window.fetch;
+  window.fetch = function (url, options) {
+    if (typeof url === 'string' && url.startsWith('/api')) {
+      url = `${API_BASE}${url}`;
+    }
+    return originalFetch.call(this, url, options);
+  };
+}
+
 export default function App() {
   // Navigation / Tabs: 'agent' | 'chaos' | 'policies' | 'telemetry' | 'approvals' | 'ledger' | 'manual'
   const [activeTab, setActiveTab] = useState('agent');
