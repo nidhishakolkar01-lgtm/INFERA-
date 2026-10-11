@@ -5,4 +5,5 @@ frontend/node_modules/
 .env.local
 dist/
 build/
+.firebase/
 .DS_Store
